@@ -6,7 +6,7 @@ Wireguard configuration tool.
 - [Development](#development)
 
 # Overview
-This tool tried to make it easy to manage a Wireguard virtual private network.
+This tool tries to make it easy to manage a Wireguard virtual private network.
 It is meant both for end users and network administrators.
 
 Wgd is composed of a server which keeps track of user information and a client
