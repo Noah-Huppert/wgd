@@ -23,28 +23,5 @@ a VPN. Think of Wgd as a self hosted alternative to LogMeIn Hamachi.
 Linux, Windows, and Mac OS X will be supported.
 
 # Development
-Go is used due to its cross platform nature.
-
-Currently these steps have only been confirmed on Linux. Windows support
-is coming soon. Followed by Mac OSX.
-
-## Dependencies
-Most dependencies are managed by the Go modules automatically.
-
-For the GUI to be built on Linux the following headers must be installed:
-
-| Dependency                  | Void Linux Package  |
-| --                          | --                  |
-| `X11/Xcursor/Xcursor.h`     | `libXcursor-devel`  |
-| `X11/extensions/Xrandr.h`   | `libXrandr-devel`   |
-| `X11/extensions/Xinerama.h` | `libXinerama-devel` |
-| `X11/extensions/XInput2.h`  | `libXi-devel`       |
-| `GL/glx.h`                  | `libglvnd-devel`    |
-| Xxf86vm                     | `libXxf86vm-devel`  |
-
-## Run
-Execute:
-
-```
-go run .
-```
+See [`client/README.md`](./client/README.md) for instructions specific to the 
+client. As well as [`server/README.md`](./server/README.md) for the server.
