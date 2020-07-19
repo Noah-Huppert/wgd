@@ -1,19 +1,24 @@
 # wgd
-Wireguard configuration tool.
+Builds quality of life features on top of Wireguard.
 
 # Table Of Contents
 - [Overview](#overview)
 - [Development](#development)
 
 # Overview
-This tool tries to make it easy to manage a Wireguard virtual private network.
-It is meant both for end users and network administrators.
+This suite of tools tries to make it easy for users to join and be part of 
+a Wireguard network as well as for administrators to manage Wireguard networks.
 
-Wgd is composed of a server which keeps track of user information and a client
-which configures peer's Wireguard interfaces to join the network.
+The suite is composed of two tools, each meant for different types of users:
 
-The purpose of this tool is to make it easy to bring non-technical users into
-a Wireguard network.
+- **Server**: Centralized registry of user information. Makes administering
+  the network easier. 
+- **Client**: GUI tool to help peers join and stay part of the network.
+
+Wgd is not for everyone. It is a set of opinionated tools which try to make it 
+easier for technical and non-technical users alike to use Wireguard. It is
+designed for users who already trust each other and simply want to connect over 
+a VPN. Think of Wgd as a self hosted alternative to LogMeIn Hamachi.
 
 Linux, Windows, and Mac OS X will be supported.
 
