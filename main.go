@@ -38,8 +38,9 @@ type Window struct {
 	// Bus on which longer running non-blocking tasks can signal their results.
 	Bus chan WindowEvent
 
-	// Fonts loaded for use in layouts.
-	Fonts WindowFonts
+	// Fonts loaded for use in layouts. Pointer bc it will be nil until the
+	// fonts are loaded.
+	Fonts *WindowFonts
 }
 
 // Fonts for use in Window layouts.
@@ -138,17 +139,25 @@ func NewWindow(baseLogger golog.Logger) (*Window, error) {
 		return nil, fmt.Errorf("Failed to load configuration: %s", err)
 	}
 
-	// Setup window
-	masterWindow := g.NewMasterWindow(config.AppName,
-		400, 200, 0, nil)
+	return &Window{
+		Logger: logger,
+		Config: config,
+		State:  NewGUIState(),
+		Bus:    make(chan WindowEvent),
+		Fonts:  nil,
+	}, nil
+}
 
+// Load fonts for use. Populates .Fonts field.
+func (w *Window) LoadFonts() {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get current working directory for use in loading fonts: %s", err)
+		w.Logger.Fatalf("Failed to get current working directory for use "+
+			"in loading fonts: %s", err)
 	}
+
 	fonts := g.Context.IO().Fonts()
-	logger.Debugf("zilla slab path=%s", filepath.Join(cwd,
-		"./fonts/zilla-slab/ttf/ZillaSlab-Regular.ttf"))
+
 	zillaSlabFont := fonts.AddFontFromFileTTFV(
 		filepath.Join(cwd,
 			"./fonts/zilla-slab/ttf/ZillaSlab-Regular.ttf"),
@@ -157,25 +166,22 @@ func NewWindow(baseLogger golog.Logger) (*Window, error) {
 		fonts.GlyphRangesDefault(),
 	)
 
-	return &Window{
-		Logger:       logger,
-		Config:       config,
-		MasterWindow: masterWindow,
-		State:        NewGUIState(),
-		Bus:          make(chan WindowEvent),
-		Fonts: WindowFonts{
-			ZillaSlabRegular: zillaSlabFont,
-		},
-	}, nil
+	w.Fonts = &WindowFonts{
+		ZillaSlabRegular: zillaSlabFont,
+	}
 }
 
 // Display the window.
 func (w *Window) Display() {
+	// Setup window
+	masterWindow := g.NewMasterWindow(w.Config.AppName,
+		400, 200, 0, w.LoadFonts)
+
 	w.Logger.Debug("Running initialization logic")
 	w.Run(w.LoadInterfaces)
 
 	w.Logger.Debug("Running main event loop")
-	w.MasterWindow.Main(w.eventLoop)
+	masterWindow.Main(w.EventLoop)
 }
 
 // Run a background task that can pass its result to the UI via WindowEvents.
@@ -224,12 +230,8 @@ func (e IfacesLoadedEvent) Commit(w *Window) error {
 	return nil
 }
 
-func (w *Window) onDebugListInterfacesClicked() {
-
-}
-
 // Main event loop for window
-func (w *Window) eventLoop() {
+func (w *Window) EventLoop() {
 	// Receive any window events
 	select {
 	case event := <-w.Bus:
@@ -249,8 +251,7 @@ func (w *Window) eventLoop() {
 	layout := g.Layout{
 		g.MenuBar(g.Layout{
 			g.Menu("Debug", g.Layout{
-				g.MenuItem("List interfaces",
-					w.onDebugListInterfacesClicked),
+				g.MenuItem("List interfaces", nil),
 			}),
 		}),
 	}
