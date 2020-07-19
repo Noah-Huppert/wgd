@@ -1,0 +1,147 @@
+// Provides access to network information.
+service Registry {
+  // Create a new user and send them an invite code so they can get access to their account.
+  rpc CreateInvitedUser(InviteUserRequest) returns (User);
+
+  // Update a user's state. A user will be allowed to update only their state. Admins can
+  // update any user's state. The user argument should include the id field plus any fields
+  // which should be updated.
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+
+  // Create a new subnet.
+  rpc CreateSubnet(CreateSubnetRequest) returns (Subnet);
+
+  rpc AssignSubnetAddress(AssignSubnetAddressRequest);
+}
+
+// Request to invite a user.
+message InviteUserRequest {
+  // Name of new user.
+  string name = 1;
+
+  // Email of new user.
+  string email = 2;
+}
+
+// Request to update a user.
+message UpdateUserRequest {
+  // ID of user to update.
+  string id = 1;
+
+  // New user fields.
+  User user = 2;
+}
+
+// Request to create a subnet.
+message CreateSubnetRequest {
+  // Name of new subnet.
+  string name = 1;
+
+  // Network address of new subnet. See the Subnet.AddressAssignment.Address field for details
+  // on the 64 bit size.
+  uint64 network_address = 2;
+
+  // Network mask of new subnet.
+  uint64 network_mask = 3;
+}
+
+// Request to assign an address in a subnet to a user's machine.
+message AssignSubnetAddressRequest {
+  // ID of subnet.
+  string subnet_id = 1;
+
+  // Address being assigned. See the Subnet.AddressAssignmnet.Address field for information about
+  // the 64 bit size.
+  uint64 address = 2;
+
+  // ID of user to which machine belongs.
+  string user_id = 3;
+
+  // Public key of machine to assign IP.
+  string machine_public_key = 4;
+}
+
+// User in network.
+message User {
+  // Unique identifier.
+  string id = 1;
+
+  // Invite to the network.
+  message Invite {
+    // ID of user who created the invite.
+    string creating_user_id = 1;
+
+    // Hashed invite code.
+    string code_hash = 2;
+  }
+  // Invite which created user.
+  Invite invite = 2;
+
+  // Name of user.
+  string name = 3;
+
+  // Detailed information about a user's email.
+  message Email {
+    // Email value.
+    string email = 1;
+
+    // True if email has been verified.
+    bool verified = 2;
+  }
+  // User's email.
+  Email email = 4;
+
+  // Indicates the special actions a user is able to take.
+  message Permissions {
+    // Indicates the user can administer any network or user.
+    bool admin = 1;
+
+    // Indicates the user is allowed to send traffic meant for the public internet
+    // through the server node.
+    bool allow_public_traffic = 2;
+  }
+  // Permissions associated with the user.
+  Permissions permissions = 5;
+
+  // Machine's user controls which are part of the network.
+  message Machine {
+    // Wireguard public key of machine. Used as the device's primary key.
+    string public_key = 1;
+
+    // User friendly name for the machine.
+    string name = 2;
+  }
+  // Machines owned by the user.
+  repeated Machine machines = 6;
+}
+
+// Sub-network within network.
+message Subnet {
+  // Unique identifier. Not related to the sub-network's address.
+  string id = 1;
+
+  // User friendly name for the subnet.
+  string name = 2;
+
+  // Address which identifies the subnet when and-ed with the network_mask.
+  uint64 network_address = 3;
+
+  // Subnet's mask. See note in AddressAssignment.address about the 64 bit size.
+  uint64 network_mask = 4;
+
+  // Network address assignment.
+  message AddressAssignment {
+    // Address being assigned. Used as the primary key.
+    // Currently only IPv4 32 bit addresses are supported. The field is a 64 bit integer
+    // for future compatability with IPv6.
+    uint64 address = 1;
+
+    // ID of user to which machine belongs.
+    string user_id = 2;
+
+    // Public key of machine to assign IP.
+    string machine_public_key = 3;
+  }
+  // Addresses assigned in subnet.
+  repeated AddressAssignment address_assignments = 5;
+}
