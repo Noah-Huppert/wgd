@@ -22,9 +22,14 @@ running the Wireguard network so people they know can benefit.
 Go is used with Mongodb as a data store and GRPC as a transport utility.
 
 ## Dependencies
-Install the following dependencies:
+Protocol buffers are used for client server communication. Follow all
+instructions in the
+[`../rpc/README.md`](../rpc/README.md#Development) file 
+development section.
 
-- [Protocol Buffers Compiler `protoc`](https://grpc.io/docs/protoc-installation/)
+## Execute
+To run the server:
 
-## Build Protocol Buffers
-TBD.
+```
+go run .
+```

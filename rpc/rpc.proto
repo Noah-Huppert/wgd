@@ -1,3 +1,6 @@
+syntax = "proto3";
+option go_package = ".;main";
+
 // Provides access to network information.
 service Registry {
   // Create a new user and send them an invite code so they can get access to their account.
@@ -11,7 +14,7 @@ service Registry {
   // Create a new subnet.
   rpc CreateSubnet(CreateSubnetRequest) returns (Subnet);
 
-  rpc AssignSubnetAddress(AssignSubnetAddressRequest);
+  //rpc AssignSubnetAddress(AssignSubnetAddressRequest);
 }
 
 // Request to invite a user.
