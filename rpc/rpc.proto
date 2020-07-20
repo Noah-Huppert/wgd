@@ -1,29 +1,79 @@
 syntax = "proto3";
-option go_package = ".;main";
+option go_package = ".;rpc";
 
 // Provides access to network information.
 service Registry {
   // Create a new user and send them an invite code so they can get access to their account.
-  rpc CreateInvitedUser(InviteUserRequest) returns (User);
+  rpc CreateInvitedUser(CreateInvitedUserRequest) returns (CreateInvitedUserResponse);
+
+  // Retrieve details of users.
+  rpc GetUsers(GetUsersRequest) returns (stream GetUsersResponseItem);
 
   // Update a user's state. A user will be allowed to update only their state. Admins can
   // update any user's state. The user argument should include the id field plus any fields
   // which should be updated.
-  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // Delete a user and associated resources.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
 
   // Create a new subnet.
-  rpc CreateSubnet(CreateSubnetRequest) returns (Subnet);
+  rpc CreateSubnet(CreateSubnetRequest) returns (CreateSubnetResponse);
 
-  //rpc AssignSubnetAddress(AssignSubnetAddressRequest);
+  // Retrieve details of subnets.
+  rpc GetSubnets(GetSubnetsRequest) returns (stream GetSubnetsResponseItem);
+
+  // Update a subnet's metadata but not addresses.
+  rpc UpdateSubnetMeta(UpdateSubnetMetaRequest) returns (UpdateSubnetMetaResponse);
+
+  // Assign an address from within a subnet to a user's machine.
+  rpc AssignSubnetAddress(AssignSubnetAddressRequest) returns (AssignSubnetAddressResponse);
+
+  // Remove an address from within a subnet from a user's machine.
+  rpc RemoveSubnetAddress(RemoveSubnetAddressRequest) returns (RemoveSubnetAddressResponse);
+
+  // Delete a subnet.
+  rpc DeleteSubnet(DeleteSubnetRequest) returns (DeleteSubnetResponse);
 }
 
 // Request to invite a user.
-message InviteUserRequest {
+message CreateInvitedUserRequest {
   // Name of new user.
   string name = 1;
 
   // Email of new user.
   string email = 2;
+}
+
+// Invite user response.
+message CreateInvitedUserResponse {
+  // Invite code new user will use to authenticate once. This value is only returned in this
+  // response so take note of it.
+  string invite_code = 1;
+
+  // Created user.
+  User user = 2;
+}
+
+// Request for user information. Do not specify any options to get a list of all users.
+message GetUsersRequest {
+  // Filter results to match specified user ID.
+  string id = 1;
+
+  // Filter results to match specified name.
+  string name = 2;
+
+  // Filter results to match specified email.
+  string email = 3;
+
+  // Filter results to match users who own a machine with the specified public key.
+  string machine_public_key = 4;
+}
+
+// Single item returned by get users in a stream.
+message GetUsersResponseItem {
+  // Returned user.
+  User user = 1;
 }
 
 // Request to update a user.
@@ -33,6 +83,22 @@ message UpdateUserRequest {
 
   // New user fields.
   User user = 2;
+}
+
+// Response to update user.
+message UpdateUserResponse {
+  // New user.
+  User user = 1;
+}
+
+// Request to delete a user.
+message DeleteUserRequest {
+  // ID of user to delete.
+  string id = 1;
+}
+
+// Response after deleting a user.
+message DeleteUserResponse {
 }
 
 // Request to create a subnet.
@@ -48,10 +114,49 @@ message CreateSubnetRequest {
   uint64 network_mask = 3;
 }
 
+// Response after creating a subnet.
+message CreateSubnetResponse {
+  // Created subnet.
+  Subnet subnet = 1;
+}
+
+// Request to retrieve information about subnets.
+message GetSubnetsRequest {
+  // Filter to match subnets with the specified ID.
+  string id = 1;
+
+  // Filter to match subnets with the specified name.
+  string name = 2;
+
+  // Filter to match subnets with the specified address.
+  string address = 3;
+}
+
+// Get subnets response item, one of many in a stream.
+message GetSubnetsResponseItem {
+  // Matched subnet.
+  Subnet subnet = 1;
+}
+
+// Request to update a subnet's metadata.
+message UpdateSubnetMetaRequest {
+  // ID of subnet to update.
+  string id = 1;
+
+  // New subnet name.
+  string name = 2;
+}
+
+// Update subnet metadata response.
+message UpdateSubnetMetaResponse {
+  // Updated subnet.
+  Subnet subnet = 1;
+}
+
 // Request to assign an address in a subnet to a user's machine.
 message AssignSubnetAddressRequest {
   // ID of subnet.
-  string subnet_id = 1;
+  string id = 1;
 
   // Address being assigned. See the Subnet.AddressAssignmnet.Address field for information about
   // the 64 bit size.
@@ -62,6 +167,37 @@ message AssignSubnetAddressRequest {
 
   // Public key of machine to assign IP.
   string machine_public_key = 4;
+}
+
+// Assign subnet address response.
+message AssignSubnetAddressResponse {
+  // Subnet after assignment.
+  Subnet subnet = 1;
+}
+
+// Request to remove an address from a subnet from a device.
+message RemoveSubnetAddressRequest {
+  // ID of subnet.
+  string id = 1;
+
+  // Address to remove.
+  uint64 address = 2;
+}
+
+// Remove subnet address response.
+message RemoveSubnetAddressResponse {
+  // Subnet after address assignment removal.
+  Subnet subnet = 1;
+}
+
+// Request to delete a subnet and all associated resources.
+message DeleteSubnetRequest {
+  // ID of subnet.
+  string id = 1;
+}
+
+// Delete subnet response.
+message DeleteSubnetResponse {
 }
 
 // User in network.
