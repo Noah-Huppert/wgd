@@ -1,4 +1,5 @@
 syntax = "proto3";
+package rpc;
 option go_package = ".;rpc";
 
 // Provides access to network information.
