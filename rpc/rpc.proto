@@ -4,8 +4,15 @@ option go_package = ".;rpc";
 
 // Provides access to network information.
 service Registry {
+  // Get overall server status.
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  
   // Create a new user and send them an invite code so they can get access to their account.
   rpc CreateInvitedUser(CreateInvitedUserRequest) returns (CreateInvitedUserResponse);
+
+  // Approve a new user invite. This will also start the onboarding process which
+  // includes sending an email to the user.
+  rpc ApproveInvitedUser(ApproveInvitedUserRequest) returns (ApproveInvitedUserResponse);
 
   // Retrieve details of users.
   rpc GetUsers(GetUsersRequest) returns (stream GetUsersResponseItem);
@@ -37,6 +44,16 @@ service Registry {
   rpc DeleteSubnet(DeleteSubnetRequest) returns (DeleteSubnetResponse);
 }
 
+// Request to get server's health.
+message HealthCheckRequest {
+}
+
+// Get server health response.
+message HealthCheckResponse {
+  // Indicates if the server is okay overall.
+  bool ok = 1;
+}
+
 // Request to invite a user.
 message CreateInvitedUserRequest {
   // Name of new user.
@@ -54,6 +71,16 @@ message CreateInvitedUserResponse {
 
   // Created user.
   User user = 2;
+}
+
+// Approve invited user request.
+message ApproveInvitedUserRequest {
+  // ID of user to approve.
+  string id = 1;
+}
+
+// Approve invited user response.
+message ApproveInvitedUserResponse {
 }
 
 // Request for user information. Do not specify any options to get a list of all users.
@@ -211,8 +238,15 @@ message User {
     // ID of user who created the invite.
     string creating_user_id = 1;
 
-    // Hashed invite code.
-    string code_hash = 2;
+    // Indicates if the invite has been approved. Admins must approve new user
+    // invites to prevent normal users from bringing in new user's who have not
+    // been approved yet.
+    bool invite_approved = 2;
+
+    // Indicates if the user has accepted the invited. If this is true they will
+    // be treated like a full user. If this is false then the user's password_hash
+    // is actually the invite code's hash.
+    bool joined = 3;
   }
   // Invite which created user.
   Invite invite = 2;
@@ -231,6 +265,9 @@ message User {
   // User's email.
   Email email = 4;
 
+  // Password hash. When 
+  string password_hash = 5;
+
   // Indicates the special actions a user is able to take.
   message Permissions {
     // Indicates the user can administer any network or user.
@@ -241,7 +278,7 @@ message User {
     bool allow_public_traffic = 2;
   }
   // Permissions associated with the user.
-  Permissions permissions = 5;
+  Permissions permissions = 6;
 
   // Machine's user controls which are part of the network.
   message Machine {
@@ -252,7 +289,7 @@ message User {
     string name = 2;
   }
   // Machines owned by the user.
-  repeated Machine machines = 6;
+  repeated Machine machines = 7;
 }
 
 // Sub-network within network.
