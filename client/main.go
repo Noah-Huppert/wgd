@@ -1,15 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/Noah-Huppert/wgd/server/rpc"
 
 	g "github.com/AllenDang/giu"
 	"github.com/AllenDang/giu/imgui"
 	"github.com/Noah-Huppert/goconf"
 	"github.com/Noah-Huppert/golog"
 	"github.com/vishvananda/netlink"
+	"google.golang.org/grpc"
 )
 
 // Wireguard service configuration.
@@ -22,14 +26,14 @@ type Config struct {
 // GUI window. All logic related to laying out the GUI as well
 // as any side effect actions occur here.
 type Window struct {
+	// Context.
+	Ctx context.Context
+
 	// Logger.
 	Logger golog.Logger
 
 	// Configuration.
 	Config Config
-
-	// Main GUI window.
-	MasterWindow *g.MasterWindow
 
 	// Data which will be displayed or effect the display of
 	// the GUI.
@@ -41,6 +45,9 @@ type Window struct {
 	// Fonts loaded for use in layouts. Pointer bc it will be nil until the
 	// fonts are loaded.
 	Fonts *WindowFonts
+
+	// Client for registry service.
+	RegistryClient rpc.RegistryClient
 }
 
 // Fonts for use in Window layouts.
@@ -128,7 +135,7 @@ func NewGUIState() GUIState {
 }
 
 // Initializes a new Window
-func NewWindow(baseLogger golog.Logger) (*Window, error) {
+func NewWindow(ctx context.Context, baseLogger golog.Logger) (*Window, error) {
 	logger := baseLogger.GetChild("window")
 
 	// Load configuration
@@ -136,15 +143,25 @@ func NewWindow(baseLogger golog.Logger) (*Window, error) {
 	cfgLdr.AddConfigPath("/etc/wgd/*")
 	config := Config{}
 	if err := cfgLdr.Load(&config); err != nil {
-		return nil, fmt.Errorf("Failed to load configuration: %s", err)
+		return nil, fmt.Errorf("failed to load configuration: %s", err)
 	}
 
+	// Create registry service client
+	grpcConn, err := grpc.Dial(config.ServerAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to server: %s", err)
+	}
+
+	registryClient := rpc.NewRegistryClient(grpcConn)
+
 	return &Window{
-		Logger: logger,
-		Config: config,
-		State:  NewGUIState(),
-		Bus:    make(chan WindowEvent),
-		Fonts:  nil,
+		Ctx:            ctx,
+		Logger:         logger,
+		Config:         config,
+		State:          NewGUIState(),
+		Bus:            make(chan WindowEvent),
+		Fonts:          nil,
+		RegistryClient: registryClient,
 	}, nil
 }
 
@@ -284,10 +301,12 @@ func (w *Window) EventLoop() {
 }
 
 func main() {
+	ctx := context.Background()
+
 	baseLogger := golog.NewLogger("wgd")
 	baseLogger.Debug("Starting")
 
-	window, err := NewWindow(baseLogger)
+	window, err := NewWindow(ctx, baseLogger)
 	if err != nil {
 		baseLogger.Fatalf("Failed to initialize window: %s")
 	}
