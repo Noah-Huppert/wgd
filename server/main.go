@@ -10,22 +10,52 @@ import (
 	"github.com/Noah-Huppert/goconf"
 	"github.com/Noah-Huppert/golog"
 	//"github.com/vishvananda/netlink"
+	"go.mongodb.org/mongo-driver/mongo"
+	mongoOpts "go.mongodb.org/mongo-driver/mongo/options"
+	mongoReadpref "go.mongodb.org/mongo-driver/mongo/readpref"
 	"google.golang.org/grpc"
 )
 
-// Application config.
+// Config stores application configuration parameters.
 type Config struct {
 	// RPCAddr is the address on which the GRPC socket will run.
 	RPCAddr string `default:"127.0.0.1:6000" validate:"required"`
+
+	// MongoDB holds MongoDB configuration.
+	MongoDB struct {
+		// URI is the address of the MongoDB database.
+		URI string `default:"mongodb://127.0.0.1:27017" validate:"required"`
+
+		// DatabaseName is the name of the MongoDB database.
+		DatabaseName string `default:"dev_wgd" validate:"required"`
+	}
 }
 
-// Implements RPC interface.
+// DB holds any database related context.
+type DB struct {
+	// Client is the MongoDB client.
+	Client *mongo.Client
+
+	// Database is a handle for the Mongo database.
+	Database *mongo.Database
+
+	// Users is a handle to the users Mongo collection.
+	Users *mongo.Collection
+
+	// Subnets is a handle to the subnets Mongo collection.
+	Subnets *mongo.Collection
+}
+
+// RPCServer implements RPC interface.
 type RPCServer struct {
 	// Logger.
 	Logger golog.Logger
 
 	// Config.
 	Config Config
+
+	// DB.
+	DB DB
 }
 
 // Listen on the configured port for GRPC requests.
@@ -58,59 +88,57 @@ type Registry struct {
 	Config Config
 }
 
-// Create a new user and send them an invite code so they can get access to their account.
+func (r *Registry) HealthCheck(ctx context.Context, req *rpc.HealthCheckRequest) (*rpc.HealthCheckResponse, error) {
+	return nil, nil
+}
+
 func (r *Registry) CreateInvitedUser(ctx context.Context, req *rpc.CreateInvitedUserRequest) (*rpc.CreateInvitedUserResponse, error) {
 	return &rpc.CreateInvitedUserResponse{}, nil
 }
 
-// Retrieve details of users.
+func (r *Registry) ApproveInvitedUser(ctx context.Context, req *rpc.ApproveInvitedUserRequest) (*rpc.ApproveInvitedUserResponse, error) {
+	return nil, nil
+}
+
 func (r *Registry) GetUsers(req *rpc.GetUsersRequest, resp_stream rpc.Registry_GetUsersServer) error {
 	return nil
 }
 
-// Update a user's state. A user will be allowed to update only their state. Admins can
-// update any user's state. The user argument should include the id field plus any fields
-// which should be updated.
 func (r *Registry) UpdateUser(ctx context.Context, req *rpc.UpdateUserRequest) (*rpc.UpdateUserResponse, error) {
 	return &rpc.UpdateUserResponse{}, nil
 }
 
-// Delete a user and associated resources.
 func (r *Registry) DeleteUser(ctx context.Context, req *rpc.DeleteUserRequest) (*rpc.DeleteUserResponse, error) {
 	return &rpc.DeleteUserResponse{}, nil
 }
 
-// Create a new subnet.
 func (r *Registry) CreateSubnet(ctx context.Context, req *rpc.CreateSubnetRequest) (*rpc.CreateSubnetResponse, error) {
 	return &rpc.CreateSubnetResponse{}, nil
 }
 
-// Retrieve details of subnets.
 func (r *Registry) GetSubnets(req *rpc.GetSubnetsRequest, resp_stream rpc.Registry_GetSubnetsServer) error {
 	return nil
 }
 
-// Update a subnet's metadata but not addresses.
 func (r *Registry) UpdateSubnetMeta(ctx context.Context, req *rpc.UpdateSubnetMetaRequest) (*rpc.UpdateSubnetMetaResponse, error) {
 	return &rpc.UpdateSubnetMetaResponse{}, nil
 }
 
-// Assign an address from within a subnet to a user's machine.
 func (r *Registry) AssignSubnetAddress(ctx context.Context, req *rpc.AssignSubnetAddressRequest) (*rpc.AssignSubnetAddressResponse, error) {
 	return &rpc.AssignSubnetAddressResponse{}, nil
 }
 
-// Remove an address from within a subnet from a user's machine.
 func (r *Registry) RemoveSubnetAddress(ctx context.Context, req *rpc.RemoveSubnetAddressRequest) (*rpc.RemoveSubnetAddressResponse, error) {
 	return &rpc.RemoveSubnetAddressResponse{}, nil
 }
 
-// Delete a subnet.
 func (r *Registry) DeleteSubnet(ctx context.Context, req *rpc.DeleteSubnetRequest) (*rpc.DeleteSubnetResponse, error) {
 	return &rpc.DeleteSubnetResponse{}, nil
 }
 
 func main() {
+	ctx := context.Background()
+
 	// Logger
 	logger := golog.NewLogger("wgd.server")
 	logger.Debug("Starting")
@@ -123,10 +151,31 @@ func main() {
 		logger.Fatalf("Failed to load configuration: %s", err)
 	}
 
+	// Connect to MongoDB
+	mongoClient, err := mongo.Connect(ctx,
+		mongoOpts.Client().ApplyURI(config.MongoDB.URI))
+	if err != nil {
+		logger.Fatalf("Failed to connect to MongoDB: %s", err)
+	}
+
+	if err := mongoClient.Ping(ctx, mongoReadpref.Primary()); err != nil {
+		logger.Fatalf("Failed to ping MongoDB: %s", err)
+	}
+
+	mongoDatabase := mongoClient.Database(config.MongoDB.DatabaseName)
+
+	db := DB{
+		Client:   mongoClient,
+		Database: mongoDatabase,
+		Users:    mongoDatabase.Collection("users"),
+		Subnets:  mongoDatabase.Collection("subnets"),
+	}
+
 	// Start GRPC server
 	rpcServer := RPCServer{
 		Logger: logger,
 		Config: config,
+		DB:     db,
 	}
 	if err := rpcServer.Listen(); err != nil {
 		logger.Fatalf("Failed to run the RPC server "+

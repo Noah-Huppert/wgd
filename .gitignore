@@ -1,2 +1,5 @@
 # Generated protocol buffers
 *.pb.go
+
+# MongoDB container dat
+container-data/
