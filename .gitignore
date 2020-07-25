@@ -3,3 +3,19 @@
 
 # MongoDB container dat
 container-data/
+
+# Certificates
+*.pem
+*.key
+*.csr
+*.cert
+*.srl
+
+# Keep development certificates
+!dev-ca.key
+!dev-ca.cert
+
+!dev-server.key
+!dev-server.csr
+!dev-server.pem
+

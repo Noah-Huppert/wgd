@@ -14,12 +14,22 @@ import (
 	mongoOpts "go.mongodb.org/mongo-driver/mongo/options"
 	mongoReadpref "go.mongodb.org/mongo-driver/mongo/readpref"
 	"google.golang.org/grpc"
+	grpcCredentials "google.golang.org/grpc/credentials"
 )
 
 // Config stores application configuration parameters.
 type Config struct {
-	// RPCAddr is the address on which the GRPC socket will run.
-	RPCAddr string `default:"127.0.0.1:6000" validate:"required"`
+	// RPC configuration.
+	RPC struct {
+		// ListenAddr is the address on which the GRPC socket will listen.
+		ListenAddr string `default:"127.0.0.1:6000" validate:"required"`
+
+		// KeyFile is the encryption key file.
+		KeyFile string `default:"../rpc/dev-server.key" validate:"required"`
+
+		// CertificateFile is the encryption certificate file.
+		CertificateFile string `default:"../rpc/dev-server.pem" validate:"required"`
+	}
 
 	// MongoDB holds MongoDB configuration.
 	MongoDB struct {
@@ -60,20 +70,29 @@ type RPCServer struct {
 
 // Listen on the configured port for GRPC requests.
 func (s *RPCServer) Listen() error {
-	rpcListen, err := net.Listen("tcp", s.Config.RPCAddr)
+	// Load credentials
+	creds, err := grpcCredentials.NewServerTLSFromFile(
+		s.Config.RPC.CertificateFile,
+		s.Config.RPC.KeyFile)
 	if err != nil {
-		return fmt.Errorf("error listening on \"%s\": %s",
-			s.Config.RPCAddr, err)
+		return fmt.Errorf("failed to load server credentials: %s", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	// Setup server
+	rpcListen, err := net.Listen("tcp", s.Config.RPC.ListenAddr)
+	if err != nil {
+		return fmt.Errorf("error listening on \"%s\": %s",
+			s.Config.RPC.ListenAddr, err)
+	}
+
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
 	rpc.RegisterRegistryServer(grpcServer, &Registry{
 		Logger: s.Logger.GetChild("registry"),
 		Config: s.Config,
 	})
 
 	s.Logger.Infof("Listening for GRPC requests on \"%s\"",
-		s.Config.RPCAddr)
+		s.Config.RPC.ListenAddr)
 	grpcServer.Serve(rpcListen)
 
 	return nil
@@ -179,6 +198,6 @@ func main() {
 	}
 	if err := rpcServer.Listen(); err != nil {
 		logger.Fatalf("Failed to run the RPC server "+
-			"on \"%s\": %s", config.RPCAddr, err)
+			"on \"%s\": %s", config.RPC.ListenAddr, err)
 	}
 }

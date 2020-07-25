@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 
-	"github.com/Noah-Huppert/wgd/server/rpc"
+	"github.com/Noah-Huppert/wgd/client/rpc"
 
 	g "github.com/AllenDang/giu"
 	"github.com/AllenDang/giu/imgui"
@@ -14,6 +17,7 @@ import (
 	"github.com/Noah-Huppert/golog"
 	"github.com/vishvananda/netlink"
 	"google.golang.org/grpc"
+	grpcCredentials "google.golang.org/grpc/credentials"
 )
 
 // Wireguard service configuration.
@@ -21,6 +25,16 @@ type Config struct {
 	// Name of application. Will be presented to users as the identity of
 	// your VPN.
 	AppName string `default:"Wireguard VPN" validate:"required"`
+
+	// RPC configuration.
+	RPC struct {
+		// ServerAddr is the address of the RPC server.
+		ServerAddr string `default:"127.0.0.1:6000" validate:"required"`
+
+		// CACertificateFile is the certificate of the certficate authority
+		// which signed the server's certificates.
+		CACertificateFile string `default:"../rpc/dev-ca.cert" validate:"required"`
+	}
 }
 
 // GUI window. All logic related to laying out the GUI as well
@@ -147,7 +161,25 @@ func NewWindow(ctx context.Context, baseLogger golog.Logger) (*Window, error) {
 	}
 
 	// Create registry service client
-	grpcConn, err := grpc.Dial(config.ServerAddr)
+	caCertBytes, err := ioutil.ReadFile(config.RPC.CACertificateFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read server certificate authority "+
+			"certificate file: %s", err)
+	}
+
+	tlsCertPool := x509.NewCertPool()
+	if !tlsCertPool.AppendCertsFromPEM(caCertBytes) {
+		return nil, fmt.Errorf("failed to add server certificate authority "+
+			"to a x509 cert pool: %s", err)
+	}
+
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: false,
+		RootCAs:            tlsCertPool,
+	}
+
+	grpcConn, err := grpc.Dial(config.RPC.ServerAddr,
+		grpc.WithTransportCredentials(grpcCredentials.NewTLS(tlsConfig)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to server: %s", err)
 	}
@@ -308,7 +340,7 @@ func main() {
 
 	window, err := NewWindow(ctx, baseLogger)
 	if err != nil {
-		baseLogger.Fatalf("Failed to initialize window: %s")
+		baseLogger.Fatalf("Failed to initialize window: %s", err)
 	}
 	baseLogger.Debug("Created window")
 	window.Display()
