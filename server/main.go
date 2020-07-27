@@ -108,7 +108,9 @@ type Registry struct {
 }
 
 func (r *Registry) HealthCheck(ctx context.Context, req *rpc.HealthCheckRequest) (*rpc.HealthCheckResponse, error) {
-	return nil, nil
+	return &rpc.HealthCheckResponse{
+		Ok: true,
+	}, nil
 }
 
 func (r *Registry) CreateInvitedUser(ctx context.Context, req *rpc.CreateInvitedUserRequest) (*rpc.CreateInvitedUserResponse, error) {
