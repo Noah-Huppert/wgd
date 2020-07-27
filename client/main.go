@@ -6,15 +6,15 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"path/filepath"
 
 	"github.com/Noah-Huppert/wgd/client/rpc"
 
-	g "github.com/AllenDang/giu"
-	"github.com/AllenDang/giu/imgui"
 	"github.com/Noah-Huppert/goconf"
+	"github.com/Noah-Huppert/gointerrupt"
 	"github.com/Noah-Huppert/golog"
+	"github.com/goki/gi/gi"
+	"github.com/goki/gi/gimain"
+	"github.com/goki/ki/ki"
 	"github.com/vishvananda/netlink"
 	"google.golang.org/grpc"
 	grpcCredentials "google.golang.org/grpc/credentials"
@@ -22,9 +22,12 @@ import (
 
 // Wireguard service configuration.
 type Config struct {
-	// Name of application. Will be presented to users as the identity of
-	// your VPN.
+	// AppName is the name of application. Will be presented to users as the
+	// identity of your VPN.
 	AppName string `default:"Wireguard VPN" validate:"required"`
+
+	// AppDescription is the description of the app presented to the user.
+	AppDescription string `default:"Private network" validate:"required"`
 
 	// RPC configuration.
 	RPC struct {
@@ -58,16 +61,10 @@ type Window struct {
 
 	// Fonts loaded for use in layouts. Pointer bc it will be nil until the
 	// fonts are loaded.
-	Fonts *WindowFonts
+	//Fonts *WindowFonts
 
 	// Client for registry service.
 	RegistryClient rpc.RegistryClient
-}
-
-// Fonts for use in Window layouts.
-type WindowFonts struct {
-	// Zilla Slab Regular
-	ZillaSlabRegular imgui.Font
 }
 
 // Window task bus events.
@@ -187,50 +184,22 @@ func NewWindow(ctx context.Context, baseLogger golog.Logger) (*Window, error) {
 	registryClient := rpc.NewRegistryClient(grpcConn)
 
 	return &Window{
-		Ctx:            ctx,
-		Logger:         logger,
-		Config:         config,
-		State:          NewGUIState(),
-		Bus:            make(chan WindowEvent),
-		Fonts:          nil,
+		Ctx:    ctx,
+		Logger: logger,
+		Config: config,
+		State:  NewGUIState(),
+		Bus:    make(chan WindowEvent),
+		//Fonts:          nil,
 		RegistryClient: registryClient,
 	}, nil
-}
-
-// Load fonts for use. Populates .Fonts field.
-func (w *Window) LoadFonts() {
-	cwd, err := os.Getwd()
-	if err != nil {
-		w.Logger.Fatalf("Failed to get current working directory for use "+
-			"in loading fonts: %s", err)
-	}
-
-	fonts := g.Context.IO().Fonts()
-
-	zillaSlabFont := fonts.AddFontFromFileTTFV(
-		filepath.Join(cwd,
-			"./fonts/zilla-slab/ttf/ZillaSlab-Regular.ttf"),
-		24,
-		imgui.DefaultFontConfig,
-		fonts.GlyphRangesDefault(),
-	)
-
-	w.Fonts = &WindowFonts{
-		ZillaSlabRegular: zillaSlabFont,
-	}
 }
 
 // Display the window.
 func (w *Window) Display() {
 	// Setup window
-	masterWindow := g.NewMasterWindow(w.Config.AppName,
-		400, 200, 0, w.LoadFonts)
-
-	w.Logger.Debug("Running initialization logic")
-	w.Run(w.LoadInterfaces)
-
-	w.Logger.Debug("Running main event loop")
-	masterWindow.Main(w.EventLoop)
+	gimain.Main(func() {
+		w.EventLoop()
+	})
 }
 
 // Run a background task that can pass its result to the UI via WindowEvents.
@@ -281,64 +250,112 @@ func (e IfacesLoadedEvent) Commit(w *Window) error {
 
 // Main event loop for window
 func (w *Window) EventLoop() {
-	// Receive any window events
-	select {
-	case event := <-w.Bus:
-		err := event.Commit(w)
-		if err != nil {
-			w.Logger.Errorf("Failed to run \"%#v\" event commit: %s",
-				event, err)
+	width := 1024
+	height := 768
+
+	gi.SetAppName(w.Config.AppName)
+	gi.SetAppAbout(w.Config.AppDescription)
+
+	window := gi.NewMainWindow(w.Config.AppName, w.Config.AppDescription,
+		width, height)
+
+	viewport := window.WinViewport2D()
+	updateOp := viewport.UpdateStart()
+
+	mfr := window.SetMainFrame()
+	mfr.SetProp("background-color", gi.HSLA{1, 1, 1, 1.0})
+
+	rlay := gi.AddNewLayout(mfr, "rowlay", gi.LayoutHoriz)
+	rlay.SetProp("text-align", "center")
+
+	gi.AddNewLabel(rlay, "label1", "This is test text")
+
+	but := gi.AddNewButton(rlay, "Button")
+	but.ButtonSig.Connect(window, func(recv, send ki.Ki, sig int64, data interface{}) {
+		w.Logger.Debug("Hello button")
+	})
+
+	// edit1 := gi.AddNewTextField(rlay, "edit1")
+	// button1 := gi.AddNewButton(rlay, "button1")
+	// button2 := gi.AddNewButton(rlay, "button2")
+	// slider1 := gi.AddNewSlider(rlay, "slider1")
+	// spin1 := gi.AddNewSpinBox(rlay, "spin1")
+
+	// edit1.SetText("Edit this text")
+	// edit1.SetProp("min-width", "20em")
+	// button1.Text = "Button 1"
+	// button2.Text = "Button 2"
+	// slider1.Dim = gi.X
+	// slider1.SetProp("width", "20em")
+	// slider1.SetValue(0.5)
+	// spin1.SetValue(
+
+	viewport.UpdateEndNoSig(updateOp)
+	window.StartEventLoop()
+	/*
+		// Receive any window events
+		select {
+		case <-w.Ctx.Done():
+			g.CloseCurrentPopup()
+		case event := <-w.Bus:
+			err := event.Commit(w)
+			if err != nil {
+				w.Logger.Errorf("Failed to run \"%#v\" event commit: %s",
+					event, err)
+			}
+		default:
+			break
 		}
-	default:
-		break
-	}
 
-	// Set default font
-	g.PushFont(w.Fonts.ZillaSlabRegular)
+		g.CloseCurrentPopup()
 
-	// Setup top menu bar
-	layout := g.Layout{
-		g.MenuBar(g.Layout{
-			g.Menu("Debug", g.Layout{
-				g.MenuItem("List interfaces", nil),
+		// Set default font
+		g.PushFont(w.Fonts.ZillaSlabRegular)
+
+		// Setup top menu bar
+		layout := g.Layout{
+			g.MenuBar(g.Layout{
+				g.Menu("Debug", g.Layout{
+					g.MenuItem("List interfaces", nil),
+				}),
 			}),
-		}),
-	}
+		}
 
-	// Display any errors
-	for _, err := range w.State.Errors {
-		layout = append(layout, g.Line(
-			g.Label(err),
-		))
-	}
-
-	// Display status of interfaces
-	layout = append(layout, g.Line(
-		g.Label(string(w.State.LoadWgIfacesStatus)),
-	))
-
-	if w.State.LoadWgIfacesStatus == WgIfaceReady {
-		for _, wgIface := range w.State.WgIfaces {
+		// Display any errors
+		for _, err := range w.State.Errors {
 			layout = append(layout, g.Line(
-				g.Label(fmt.Sprintf("(%s) %s", wgIface.Status,
-					wgIface.Name)),
+				g.Label(err),
 			))
 		}
-	}
 
-	g.PopFont()
+		// Display status of interfaces
+		layout = append(layout, g.Line(
+			g.Label(string(w.State.LoadWgIfacesStatus)),
+		))
 
-	// Make window with layout
-	g.SingleWindowWithMenuBar(w.Config.AppName, layout)
+		if w.State.LoadWgIfacesStatus == WgIfaceReady {
+			for _, wgIface := range w.State.WgIfaces {
+				layout = append(layout, g.Line(
+					g.Label(fmt.Sprintf("(%s) %s", wgIface.Status,
+						wgIface.Name)),
+				))
+			}
+		}
+
+		g.PopFont()
+
+		// Make window with layout
+		g.SingleWindowWithMenuBar(w.Config.AppName, layout)
+	*/
 }
 
 func main() {
-	ctx := context.Background()
+	ctxPair := gointerrupt.NewCtxPair(context.Background())
 
 	baseLogger := golog.NewLogger("wgd")
 	baseLogger.Debug("Starting")
 
-	window, err := NewWindow(ctx, baseLogger)
+	window, err := NewWindow(ctxPair.Graceful(), baseLogger)
 	if err != nil {
 		baseLogger.Fatalf("Failed to initialize window: %s", err)
 	}

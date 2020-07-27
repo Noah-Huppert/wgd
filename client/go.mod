@@ -5,7 +5,10 @@ go 1.14
 require (
 	github.com/AllenDang/giu v0.0.0-20200716024418-c752001bb77c
 	github.com/Noah-Huppert/goconf v0.2.3
+	github.com/Noah-Huppert/gointerrupt v1.0.2
 	github.com/Noah-Huppert/golog v1.2.0
+	github.com/goki/gi v1.0.10
+	github.com/goki/ki v1.0.2
 	github.com/golang/protobuf v1.4.1
 	github.com/vishvananda/netlink v1.1.0
 	google.golang.org/grpc v1.30.0
