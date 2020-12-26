@@ -24,3 +24,15 @@ Deno is used due to its cross platform nature.
 
 Currently these steps have only been confirmed on Linux. Windows support
 is coming soon. Followed by Mac OSX.
+
+To build:
+
+```
+vr build
+```
+
+To start a development server:
+
+```
+vr start
+```

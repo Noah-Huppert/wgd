@@ -1,21 +1,9 @@
-# Generated protocol buffers
-*.pb.go
+# Overall
+.DS_Store
 
-# MongoDB container dat
-container-data/
+# Client
+client/dist/
+client/cache.json
 
-# Certificates
-*.pem
-*.key
-*.csr
-*.cert
-*.srl
-
-# Keep development certificates
-!dev-ca.key
-!dev-ca.cert
-
-!dev-server.key
-!dev-server.csr
-!dev-server.pem
-
+# Server
+# TBD
