@@ -1,4 +1,4 @@
-# wgd
+# Rhapso
 Builds quality of life features on top of Wireguard.
 
 # Table Of Contents
@@ -15,12 +15,15 @@ The suite is composed of two tools, each meant for different types of users:
   the network easier. 
 - **Client**: GUI tool to help peers join and stay part of the network.
 
-Wgd is not for everyone. It is a set of opinionated tools which try to make it 
-easier for technical and non-technical users alike to use Wireguard. It is
+Rhapso is not for everyone. It is a set of opinionated tools which try to make
+it easier for technical and non-technical users alike to use Wireguard. It is
 designed for users who already trust each other and simply want to connect over 
-a VPN. Think of Wgd as a self hosted alternative to LogMeIn Hamachi.
+a VPN. Think of Rhapso as a self hosted alternative to LogMeIn Hamachi.
 
 Linux, Windows, and Mac OS X will be supported.
+
+[Rhapso was a minor goddess of sewing](https://en.wikipedia.org/wiki/Rhapso) and
+this tool weaves together a Wireguard network, hence the name.
 
 # Development
 See [`client/README.md`](./client/README.md) for instructions specific to the 
