@@ -1,4 +1,5 @@
 scripts:
-  start: vr copy && denopack -c denopack.config.ts
+  start: denopack -c denopack.config.ts
+  watch: denopack -c denopack.config.ts --watch src/
   build: vr copy && REACT_APP_IS_PROD=true denopack -c denopack.config.ts
   copy: mkdir -p dist && cp public/favicon.ico dist/favicon.ico

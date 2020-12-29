@@ -7,6 +7,8 @@ import {
   useCache,
 } from "https://deno.land/x/denopack@0.10.0/mod.ts";
 
+//import livereload from "https://dev.jspm.io/rollup-plugin-livereload@2.0.0/mod.ts";
+
 import type {
   RollupOptions,
   TemplateOpts,
@@ -27,7 +29,7 @@ const config: RollupOptions = {
     css({ output: "mod.css" }),
     html({
       template: createHtmlTemplate,
-      title: "React App",
+      title: "Rhapso",
       meta: [
         { charset: "utf-8" },
         {
@@ -36,7 +38,7 @@ const config: RollupOptions = {
         },
         {
           name: "description",
-          content: "Web site created using create-react-app",
+          content: "GUI application which helps users join and stay in a Wireguard network",
         },
       ],
     }),
